@@ -30,7 +30,7 @@ def prRandSlot(alpha, eplen,nweak):
     p_weak = (nweak * max_attempts) / (mu_vrf * (1-delta_hvrf) - (eplen-1))
     if p_weak < 0 or p_weak > 0.01:
         return 1
-    print('pweak is ' + str(p_weak))
+    print(f'pweak is {str(p_weak)}')
     return (1- math.exp(-mu_hvrf * pow(delta_hvrf,2) /2)) * p_weak
 
 def prHslot(alpha,eplen):
@@ -52,20 +52,17 @@ def prHCG(s_hcg,  eplen):
     return math.exp(-e)
 
 def pSass(s_hcg, s_ecq, k, k_ecq):   
-    eplen = 2 * s_ecq +s_hcg 
+    eplen = 2 * s_ecq +s_hcg
     pcg = prHCG(s_hcg,  eplen) + 2 * prECQ(k_ecq)
     pcp = prCP(k)
     #print 'pcp is' + str(pcp)
     slots = math.ceil(L/T) # total number of slots in lifetime of Babe
-    p = (slots/eplen) * pow(2,20) * int(n * (1-alpha))* (pcg + pcp)
-    return p
+    return (slots/eplen) * pow(2,20) * int(n * (1-alpha))* (pcg + pcp)
 
 
 def check_pr(eplen):
     mu_vrf = (n-f) * c * alpha * max_attempts
-    if (mu_vrf * (1-delta_hvrf) - (eplen-1)) < 0:
-        return False
-    else: return True
+    return mu_vrf * (1-delta_hvrf) - (eplen-1) >= 0
 
 def find_max(eplen,nweak):
     pm = prMalSlot(alpha)
@@ -99,14 +96,14 @@ while(psass > p_attack):
 
 nweak_lst = [1,2,3,4,5,6,7]
 print
-print('eplen: ' + str(eplen) + ' k: ' + str(k))
-for nweak in nweak_lst:    
+print(f'eplen: {str(eplen)} k: {str(k)}')
+for nweak in nweak_lst:
     counter = 0
     alpha = math.sqrt(0.5)
     c = 0.5
     max_attempts = find_max(eplen,nweak)
     while max_attempts < 0 or max_attempts > 64:
-    
+
         if counter % 10 == 0 and alpha < max_alpha :
             alpha = alpha + 0.01
             f = int((1- alpha) * n)
@@ -117,8 +114,11 @@ for nweak in nweak_lst:
             break
         counter = counter + 1
         max_attempts = find_max(eplen,nweak)
-    print(str(nweak) + '&' + str(round(alpha,2)) + '&' + str(max_attempts) + '&' + str(round(c,2)))
-    
+    print(
+        f'{str(nweak)}&{str(round(alpha,2))}&{str(max_attempts)}&{str(round(c,2))}'
+    )
+
+
     #mu_hvrf = (n-f) * c * alpha * max_attempts
     #print((1- math.exp(-mu_hvrf * pow(delta_hvrf,2) /2)))
     print(r'\\\hline')

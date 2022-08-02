@@ -13,9 +13,9 @@ def normalise(kv):
 def allocate_general(total_avail, demand, choose_new_allocations):
   """General allocation algorithm, on a custom choose_allocation"""
   if any(v < 0 for v in demand.values()):
-    raise ValueError("invalid demand, not all 0/+: %s" % demand)
-  if total_avail < 0 :
-    raise ValueError("invalid total_avail, not 0/+: %s" % total_avail)
+    raise ValueError(f"invalid demand, not all 0/+: {demand}")
+  if total_avail < 0:
+    raise ValueError(f"invalid total_avail, not 0/+: {total_avail}")
 
   to_use = {k: 0 for k in demand}
   remaining_avail = total_avail
@@ -50,8 +50,8 @@ def allocate_bottom_up(total_avail, demand, guarantees):
   If any demander does not use up their guarantee, this will be allocated among
   the remainder according to their relative guarantees.
   """
-  if any(not v > 0 for v in guarantees.values()):
-    raise ValueError("invalid guarantees, not all +: %s" % guarantees)
+  if any(v <= 0 for v in guarantees.values()):
+    raise ValueError(f"invalid guarantees, not all +: {guarantees}")
   guarantees = normalise(guarantees)
 
   def alloc_bottom_up(relevant_remaining_demand, remaining_avail, allocate):
@@ -79,14 +79,15 @@ def allocate_bottom_up(total_avail, demand, guarantees):
     # if we didn't select a k, it means our demand is too much and scale = 1.
     for (k, v) in relevant_guarantees.items():
       allocate(k, scale * v * remaining_avail)
+
   return allocate_general(total_avail, demand, alloc_bottom_up)
 
 def allocate_prio(total_avail, demand, guarantees, priorities):
   """A previous version of allocate_bottom_up that had an extraneous
   "priorities" parameter which doesn't actually affect the result.
   """
-  if any(not v > 0 for v in guarantees.values()):
-    raise ValueError("invalid guarantees, not all +: %s" % guarantees)
+  if any(v <= 0 for v in guarantees.values()):
+    raise ValueError(f"invalid guarantees, not all +: {guarantees}")
   guarantees = normalise(guarantees)
 
   if set(priorities) != set(demand.keys()):
@@ -106,6 +107,7 @@ def allocate_prio(total_avail, demand, guarantees, priorities):
       # x is what we'll actually satisfy, either u or v
       x = min(u, v)
       allocate(k, x)
+
   return allocate_general(total_avail, demand, alloc_prio)
 
 def assert_allocate(A, D, G, result=None):

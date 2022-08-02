@@ -82,11 +82,7 @@ p_attack = 0.005 #the targetted attack probability of BABE
 def checkparams(cx):
     po = prH(cx, alpha) * pow(1-cx, D)
     pOne = prOne(cx,alpha)
-    if (po < cx - po):
-        #print pdH
-        return False
-    else:
-        return True
+    return po >= cx - po
 #Finds the maximum c value that satisfies the security conditions
 
 def c_optimize():
@@ -104,7 +100,7 @@ ph = prh(c, alpha)
 pOneH = prOneH(c, alpha)  
 
 #The probability of attacking BABE with NTP
-def pbabe(s_hcg, s_cq, k, kcq):    
+def pbabe(s_hcg, s_cq, k, kcq):
     pcg = prcg(s_hcg,c,omega)
     #print 'pcg is' + str(pcg)
     pcq = precq(kcq)
@@ -112,8 +108,13 @@ def pbabe(s_hcg, s_cq, k, kcq):
     pcp = prcp(k,c)
     #print 'pcp is' + str(pcp)
     slots = math.ceil(L/T) # total number of slots in lifetime of Babe
-    p = slots/(2 * s_cq +s_hcg) * pow(2,20) * int(n * (1-alpha))* (pcg + pcq + pcp)
-    return p
+    return (
+        slots
+        / (2 * s_cq + s_hcg)
+        * pow(2, 20)
+        * int(n * (1 - alpha))
+        * (pcg + pcq + pcp)
+    )
 
 
 #Finds all the necessary parameters to satisfy the targetted attack probability

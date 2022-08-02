@@ -12,28 +12,24 @@ class ddict0(dict):
   to the graph which would happen with defaultdict.
   """
   def __getitem__(self, key):
-    if key in self:
-      return super().__getitem__(key)
-    else:
-      return 0
+    return super().__getitem__(key) if key in self else 0
 
 def check_keys(d):
   k1 = set(d.keys())
-  k2 = set(s for succ in d.values() for s in succ)
+  k2 = {s for succ in d.values() for s in succ}
   assert k2.issubset(k1)
 
 def ensure_keys_ddict0(d):
   k1 = set(d.keys())
-  k2 = set(s for succ in d.values() for s in succ)
+  k2 = {s for succ in d.values() for s in succ}
   for k in k2.difference(k1):
     d[k] = ddict0()
 
 def pprintd(d):
-  pprint({k: {k_: v for (k_, v) in kv.items()} for (k, kv) in d.items()})
+  pprint({k: dict(kv.items()) for (k, kv) in d.items()})
 
 def dinic_bfs(Cap, Flow, src):
-  queue = []
-  queue.append(src)
+  queue = [src]
   level = ddict0()
   level[src] = 1
   while queue:
@@ -256,7 +252,7 @@ def tests_max_flow_min_cost():
   CR[2]["T"] = 2
   CR[3]["T"] = 1
   CR[4]["T"] = 3
-  assert (max_flow_min_cost(C, CR, "S", "T")[0:2] == (2, 4))
+  assert max_flow_min_cost(C, CR, "S", "T")[:2] == (2, 4)
 
 
 ## Kademlia stuff follows
@@ -306,7 +302,7 @@ class SKadLookup(object):
   def launch_query(self, ctx, nodeId):
     self.query_expect.add(nodeId)
     # fake send, for our testing purposes
-    print(ctx, ": sending query to node %s" % nodeId)
+    print(ctx, f": sending query to node {nodeId}")
 
   def warn_no_query(self, ctx):
     print(ctx, ": too-few results to select a next peer") # TODO more error detail
@@ -319,15 +315,13 @@ class SKadLookup(object):
         # restrict all nodes to only being on one "disjoint path" by converting
         # them into two nodes (k) and (k, "out") with capacity 1
         # across the edge between them
-        if k == FLOW_SRC:
-          # source has num_parallel flow
-          C[k][(k, "out")] = self.num_parallel
-        else:
-          C[k][(k, "out")] = 1
+        C[k][(k, "out")] = self.num_parallel if k == FLOW_SRC else 1
         for succ in sorted(succs, key=self.distance_to):
           C[(k, "out")][succ] = 1
     # every candidate has capacity := num_parallel to the sink
-    candidates = list(k for k in self.query_succ.keys() if k != FLOW_SRC and matching(k))
+    candidates = [
+        k for k in self.query_succ.keys() if k != FLOW_SRC and matching(k)
+    ]
     Rates = defaultdict(ddict0)
     for k in candidates:
       C[k][FLOW_SINK] = 1
@@ -376,13 +370,13 @@ class SKadLookup(object):
       print("RECV RESULT:", peer, reply)
 
     if peer not in self.query_expect:
-      raise ValueError("unexpected reply from peer %s: %s" % (peer, reply))
+      raise ValueError(f"unexpected reply from peer {peer}: {reply}")
 
     if peer in self.query_result:
-      raise ValueError("duplicate reply from peer %s: %s" % (peer, reply))
+      raise ValueError(f"duplicate reply from peer {peer}: {reply}")
 
     if peer in self.query_failed:
-      raise ValueError("ignoring too-late reply from peer %s: %s" % (peer, reply))
+      raise ValueError(f"ignoring too-late reply from peer {peer}: {reply}")
 
     if reply is None:
       # query failed, record it as failed
@@ -395,7 +389,7 @@ class SKadLookup(object):
       old_d = self.distance_to(peer)
       if any(self.distance_to(r) >= self.distance_to(peer) > K for r in reply):
         # probably malicious
-        raise ValueError("divergent reply from peer %s: %s" % (peer, reply))
+        raise ValueError(f"divergent reply from peer {peer}: {reply}")
 
       # everything OK, now store the reply in the query graph
       self.query_succ[peer] = set(reply)
@@ -406,20 +400,18 @@ class SKadLookup(object):
 
     assert (len(self.query_expect) + self.query_gap == self.num_parallel)
     self.query_expect.remove(peer)
-    candidates = self.select_next_query(verbose=verbose)
-
-    if not candidates:
-      # not enough data returned by neighbours to select a next_peer.
-      # record this to keep track of it, and emit a warning.
-      self.warn_no_query("recv %3s" % peer)
-      self.query_gap += 1
-      return None
-    else:
+    if candidates := self.select_next_query(verbose=verbose):
       next_peer = candidates[0]
       # make the actual query
       self.launch_query("recv %3s" % peer, next_peer)
       assert (len(self.query_expect) + self.query_gap == self.num_parallel)
       return next_peer
+    else:
+      # not enough data returned by neighbours to select a next_peer.
+      # record this to keep track of it, and emit a warning.
+      self.warn_no_query("recv %3s" % peer)
+      self.query_gap += 1
+      return None
 
   def peek_best_queries(self, verbose=False):
     return self._get_best_queries(lambda k: k not in self.query_failed, verbose=verbose)
@@ -450,7 +442,7 @@ class SKadLookup(object):
     ensure_keys_ddict0(C)
     (max_flow, min_cost, F) = max_flow_min_cost(C, Rates, FLOW_SRC, FLOW_SINK, verbose=verbose)
 
-    results = [(k, F[k][FLOW_SINK]) for k in C.keys() if F[k][FLOW_SINK] > 0]
+    results = [(k, F[k][FLOW_SINK]) for k in C if F[k][FLOW_SINK] > 0]
     results.sort(key=lambda v: (-v[1], self.distance_to(v[0])))
     assert max_flow == lcm * len(termini)
     return results
@@ -481,10 +473,10 @@ def tests_skademlia():
   q = SKadLookup([5,6,7,8], 0)
   assert(q.recv_result(5, {3,4}) == 3)
   assert(q.recv_result(6, {3,4}) == 4)
-  assert(q.recv_result(7, {3,4}) == None)
-  assert(q.recv_result(8, {3,4}) == None)
+  assert q.recv_result(7, {3,4}) is None
+  assert q.recv_result(8, {3,4}) is None
   assert(q.recv_result(3, {1}) == 1)
-  assert(q.recv_result(4, {1}) == None)
+  assert q.recv_result(4, {1}) is None
   # ^ selects None since we actually don't have enough results
   assert(q.query_gap == 3)
 
@@ -492,8 +484,8 @@ def tests_skademlia():
   q = SKadLookup([5,6,7], 0)
   assert(q.recv_result(5, {4}) == 4)
   assert(q.recv_result(4, {1,2,3}) == 1)
-  assert(q.recv_result(6, {4}) == None) # e.g. not 2
-  assert(q.recv_result(7, {4}) == None)
+  assert q.recv_result(6, {4}) is None
+  assert q.recv_result(7, {4}) is None
   # ^ this test fails if "restrict nodes to only being on 1 flow" is not implemented
   assert(q.query_gap == 2)
   assert(q.peek_best_queries() == [1,4,5])
@@ -508,8 +500,8 @@ def tests_skademlia():
   assert(q.recv_result(2, None) == 7)
   assert(q.peek_best_queries() == [5, 6, 8])
   assert(q.maybe_get_results(True) is None)
-  assert(q.recv_result(6, {}) == None)
-  assert(q.recv_result(8, {}) == None)
+  assert q.recv_result(6, {}) is None
+  assert q.recv_result(8, {}) is None
   assert(q.maybe_get_results(True) == [5, 6, 8])
   # ^ corner case involving backtracking and failure - correctly selects 7,
   # even though it's unrelated to the "10 -> 5 -> 1" path, because 6 was
@@ -519,16 +511,16 @@ def tests_skademlia():
   print("----")
   q = SKadLookup([1,2,3], 0)
   assert(q.recv_result(1, {2,3,4,5,6,7}) == 4)
-  assert(q.maybe_get_results() == None)
+  assert q.maybe_get_results() is None
   assert(q.recv_result(2, {1,3,5,6,7,8}) == 5)
-  assert(q.maybe_get_results() == None)
+  assert q.maybe_get_results() is None
   assert(q.recv_result(3, {2,9,10,11,12,13}) == 9)
   assert(q.maybe_get_results(True) == [2, 3, 1, 5, 6, 7, 4, 8, 9, 10, 11, 12, 13])
 
   # query where len(init_queries) != num_parallel
   print("----")
   q = SKadLookup([5,6,7,8,9], 0, num_parallel=3)
-  assert(q.query_expect == set([5,6,7]))
+  assert q.query_expect == {5, 6, 7}
   assert(q.recv_result(5, {1,2}) == 1)
   assert(q.recv_result(7, None) == 8)
   assert(q.recv_result(6, {10}) == 9)

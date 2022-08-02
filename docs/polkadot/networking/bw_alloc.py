@@ -21,14 +21,14 @@ def allocate(total_avail, demand, guarantees):
   If any demander does not use up their guarantee, this will be allocated among
   the remainder according to their relative guarantees.
   """
-  if any(not v > 0 for v in guarantees.values()):
-    raise ValueError("invalid guarantees, not all +: %s" % guarantees)
+  if any(v <= 0 for v in guarantees.values()):
+    raise ValueError(f"invalid guarantees, not all +: {guarantees}")
   guarantees = normalise(guarantees)
 
   if any(v < 0 for v in demand.values()):
-    raise ValueError("invalid demand, not all 0/+: %s" % demand)
-  if total_avail < 0 :
-    raise ValueError("invalid total_avail, not 0/+: %s" % total_avail)
+    raise ValueError(f"invalid demand, not all 0/+: {demand}")
+  if total_avail < 0:
+    raise ValueError(f"invalid total_avail, not 0/+: {total_avail}")
 
   to_use = {k: 0 for k in demand}
   remaining_avail = total_avail
@@ -38,8 +38,10 @@ def allocate(total_avail, demand, guarantees):
     relevant_remaining_demand = {k: d for (k, d) in remaining_demand.items() if d > 0}
 
     # relevant guarantees i.e. ignore roles with no remaining demand
-    relevant_guarantees = normalise({k: v for (k, v) in guarantees.items()
-                                     if k in relevant_remaining_demand.keys()})
+    relevant_guarantees = normalise({
+        k: v
+        for (k, v) in guarantees.items() if k in relevant_remaining_demand
+    })
     # iteration order doesn't matter due to our constraints for guarantees
     # see bw_alloc_experiments.py for details
     for k in demand:

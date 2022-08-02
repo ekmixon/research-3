@@ -91,13 +91,10 @@ def checkparams(cx):
     pHopt = prH(cx, alpha_median) * pow(1-cx, D_m)
     pmOpt = prm(cx, alpha_median)
     #if pHemp / cx < 0.5 or (pHopt/c  < 0.67 ):
-    
+
     m_rate = (1 + gamma_m) *  pmOpt
     h_rate = (1-omega_H) *  pHopt
-    if p/cx < 0.5 or h_rate/m_rate < 2:
-        return False
-    else:
-        return True
+    return p/cx >= 0.5 and h_rate/m_rate >= 2
 omega_m = 0.8
 omega_h = 0.2
 #def checkparamsm(cx):
@@ -130,13 +127,18 @@ p_attack = 0.005 #the targetted attack probability of BABE
        
        
 #Finds the probabalitity of attacking BABE with the median algorithm       
-def pbabe(s_hcg, s_ecq, k, kcq,omega):    
+def pbabe(s_hcg, s_ecq, k, kcq,omega):
     pcg = prcg(s_hcg,c,omega)
     pecq = precq(kcq)
     pcp = prcp(k,c)
     slots = math.ceil(L/T) # total number of slots in lifetime of BABE
-    p = slots/(2 * s_ecq +s_hcg) * pow(2,20) * int(n * (1-alpha))* (pcg + pecq + pcp)
-    return p
+    return (
+        slots
+        / (2 * s_ecq + s_hcg)
+        * pow(2, 20)
+        * int(n * (1 - alpha))
+        * (pcg + pecq + pcp)
+    )
 
 
 
@@ -192,17 +194,16 @@ def cqparam(bound,omega_h,omega_m):
         return 'not available'
     mu_hcq = pHopt * pow(1-c,D_m) * (1-omega_h) - pmopt * (1+omega_m)
     cand1 = math.ceil(2 * bound / (pHopt * pow(1-c,D_m) * pow(omega_h,2)))
-    print cand1
+    pHopt = prH(c,alpha_median)
     cand2 = math.ceil(bound * (2 + omega_m) / (pmopt * pow(omega_m,2)))
-    print cand2
-    s_hcq = max(cand1, cand2)
+    pHopt = prH(c,alpha_median)
     #kcq  = bound
     #t_hcg = thcg(0.5)
     #s_hcq = inv_pr(omega, bound)
     #s_ecq = secq(kcq,t_hcg)
     #s_cq = (2 * s_ecq + s_hcq)
     #return s_cq
-    return s_hcq
+    return max(cand1, cand2)
     
     
 def cdparam(omega_H, gamma_m):
